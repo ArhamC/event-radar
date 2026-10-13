@@ -2,6 +2,7 @@ import { pool } from '../db/pool';
 import { fetchIcal } from './sources/ical';
 import { fetchWestern } from './sources/western';
 import { fetchTourismLondon } from './sources/tourismLondon';
+import { fetchEventbrite } from './sources/eventbrite';
 import { geocode } from './geocode';
 import { isLikelyDuplicate } from './dedupe';
 import { suggestGoodFor, suggestTags } from './tagger';
@@ -20,6 +21,7 @@ export const ADAPTERS: Record<string, (url: string, ctx: AdapterContext) => Prom
   ical: (url) => fetchIcal(url),
   western: (url) => fetchWestern(url),
   'tourism-london': fetchTourismLondon,
+  eventbrite: (url) => fetchEventbrite(url),
 };
 
 interface Counters {

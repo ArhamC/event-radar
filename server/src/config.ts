@@ -24,4 +24,5 @@ export const config = {
   enablePipelineCron: process.env.ENABLE_PIPELINE_CRON === 'true',
   pipelineCron: process.env.PIPELINE_CRON ?? '0 3 * * *', // daily, 3am city time
   geocoderContact: process.env.GEOCODER_CONTACT ?? 'unset',
+  eventbriteToken: process.env.EVENTBRITE_TOKEN, // free private token, eventbrite.com/platform
 };

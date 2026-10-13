@@ -55,6 +55,13 @@ npm run add-source -- "Western University events" https://www.uwo.ca/events/_dat
 npm run add-source -- "Tourism London" https://www.londontourism.ca/events --type=tourism-london --auto-approve
 ```
 
+Eventbrite organizers (free private token from eventbrite.com/platform in `EVENTBRITE_TOKEN`; one source per organizer;
+online events and events more than 40 km away are skipped):
+
+```bash
+npm run add-source -- "London Public Library (Eventbrite)" https://www.eventbrite.ca/o/london-public-library-67405991003 --type=eventbrite --auto-approve
+```
+
 Imported events land in the review queue as `pending` (add `--auto-approve` to a trusted source to skip that).
 Imported prices are unknown unless the source says otherwise, so the UI shows "see listing" instead of guessing "Free".
 Each run is logged in the `pipeline_runs` table (fetched / inserted / updated / skipped / duplicates / failed).

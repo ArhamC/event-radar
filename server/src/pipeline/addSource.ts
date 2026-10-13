@@ -2,7 +2,8 @@ import { pool } from '../db/pool';
 import { ADAPTERS } from './run';
 
 // Usage: npm run add-source -- "Library events" https://example.org/events.ics [--type=ical] [--auto-approve]
-// Types: ical (any .ics feed), western (uwo.ca events JSON), tourism-london (londontourism.ca)
+// Types: ical (any .ics feed), western (uwo.ca events JSON), tourism-london (londontourism.ca),
+//        eventbrite (organizer page URL or ID; needs EVENTBRITE_TOKEN)
 async function main() {
   const args = process.argv.slice(2);
   const [name, url] = args.filter((a) => !a.startsWith('--'));
