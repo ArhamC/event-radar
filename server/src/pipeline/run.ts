@@ -3,6 +3,7 @@ import { fetchIcal } from './sources/ical';
 import { fetchWestern } from './sources/western';
 import { fetchTourismLondon } from './sources/tourismLondon';
 import { fetchEventbrite } from './sources/eventbrite';
+import { fetchLpl } from './sources/lpl';
 import { geocode } from './geocode';
 import { isLikelyDuplicate } from './dedupe';
 import { suggestGoodFor, suggestTags } from './tagger';
@@ -22,6 +23,7 @@ export const ADAPTERS: Record<string, (url: string, ctx: AdapterContext) => Prom
   western: (url) => fetchWestern(url),
   'tourism-london': fetchTourismLondon,
   eventbrite: (url) => fetchEventbrite(url),
+  lpl: (url) => fetchLpl(url),
 };
 
 interface Counters {
@@ -174,18 +176,20 @@ async function runSource(source: Source) {
   console.log(`[${source.name}]`, c, error ? `ERROR: ${error}` : '');
 }
 
-export async function runPipeline() {
+// `types` limits the run to some source types (e.g. just 'lpl'); default is every supported type.
+export async function runPipeline(types: string[] = Object.keys(ADAPTERS)) {
   const { rows } = await pool.query<Source>(
     `SELECT id, name, type, url, auto_approve FROM sources WHERE type = ANY($1::text[]) ORDER BY id`,
-    [Object.keys(ADAPTERS)]
+    [types.filter((t) => ADAPTERS[t])]
   );
   if (rows.length === 0) console.log('No sources yet. Add one with: npm run add-source -- "Name" <url>');
   for (const source of rows) await runSource(source); // sequential: keeps geocoding polite
 }
 
-// Run directly: `npm run pipeline`
+// Run directly: `npm run pipeline` (all sources) or `npm run pipeline -- --type=lpl,western`
 if (require.main === module) {
-  runPipeline()
+  const only = process.argv.find((a) => a.startsWith('--type='))?.slice('--type='.length).split(',');
+  runPipeline(only)
     .catch((err) => {
       console.error(err);
       process.exitCode = 1;

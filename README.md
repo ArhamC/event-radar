@@ -62,6 +62,14 @@ online events and events more than 40 km away are skipped):
 npm run add-source -- "London Public Library (Eventbrite)" https://www.eventbrite.ca/o/london-public-library-67405991003 --type=eventbrite --auto-approve
 ```
 
+London Public Library (reads the lpl.ca listing pages in date order, 2s apart, until 60 days out; ~2 minutes):
+
+```bash
+npm run add-source -- "London Public Library" https://www.lpl.ca/whats-on --type=lpl --auto-approve
+```
+
+Run a single source type with `npm run pipeline -- --type=lpl` (comma-separate several).
+
 Imported events land in the review queue as `pending` (add `--auto-approve` to a trusted source to skip that).
 Imported prices are unknown unless the source says otherwise, so the UI shows "see listing" instead of guessing "Free".
 Each run is logged in the `pipeline_runs` table (fetched / inserted / updated / skipped / duplicates / failed).
