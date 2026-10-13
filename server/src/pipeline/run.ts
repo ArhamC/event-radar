@@ -4,11 +4,14 @@ import { fetchWestern } from './sources/western';
 import { fetchTourismLondon } from './sources/tourismLondon';
 import { fetchEventbrite } from './sources/eventbrite';
 import { fetchLpl } from './sources/lpl';
+import { fetchSquarespace } from './sources/squarespace';
+import { fetchWixEvents } from './sources/wixEvents';
+import { fetchLondonMusicHall } from './sources/londonMusicHall';
 import { geocode } from './geocode';
 import { isLikelyDuplicate } from './dedupe';
 import { suggestGoodFor, suggestTags } from './tagger';
 import { isForKids } from './filters';
-import type { AdapterContext, RawEvent } from './types';
+import type { AdapterContext, RawEvent, SourceConfig } from './types';
 
 interface Source {
   id: number;
@@ -16,6 +19,7 @@ interface Source {
   type: string;
   url: string;
   auto_approve: boolean;
+  config: SourceConfig;
 }
 
 // sources.type -> adapter. Each returns upcoming RawEvents; everything after that is shared.
@@ -25,6 +29,9 @@ export const ADAPTERS: Record<string, (url: string, ctx: AdapterContext) => Prom
   'tourism-london': fetchTourismLondon,
   eventbrite: (url) => fetchEventbrite(url),
   lpl: (url) => fetchLpl(url),
+  squarespace: (url) => fetchSquarespace(url),
+  'wix-events': (url) => fetchWixEvents(url),
+  'london-music-hall': (url) => fetchLondonMusicHall(url),
 };
 
 interface Counters {
@@ -72,6 +79,10 @@ async function isDuplicate(raw: RawEvent, venueId: number, sourceId: number): Pr
 }
 
 async function ingestOne(source: Source, raw: RawEvent, c: Counters) {
+  // Single-venue sources: events without their own location happen at the source's venue,
+  // and events without a venue name get the source's
+  if (!raw.locationText && !raw.point && source.config.address) raw = { ...raw, locationText: source.config.address };
+  if (!raw.venueName && source.config.venueName) raw = { ...raw, venueName: source.config.venueName };
   if (!raw.locationText && !raw.point) {
     c.skipped++; // no location, can't put it on a map
     return;
@@ -155,7 +166,7 @@ async function runSource(source: Source) {
     // What we already have from this source, so slow adapters can skip unchanged events
     const existing = await pool.query('SELECT external_id, starts_at FROM events WHERE source_id = $1', [source.id]);
     const known = new Map<string, Date>(existing.rows.map((r) => [r.external_id, new Date(r.starts_at)]));
-    const events = await adapter(source.url, { known });
+    const events = await adapter(source.url, { known, config: source.config });
     c.fetched = events.length;
     for (const raw of events) {
       try {
@@ -184,7 +195,7 @@ async function runSource(source: Source) {
 // `types` limits the run to some source types (e.g. just 'lpl'); default is every supported type.
 export async function runPipeline(types: string[] = Object.keys(ADAPTERS)) {
   const { rows } = await pool.query<Source>(
-    `SELECT id, name, type, url, auto_approve FROM sources WHERE type = ANY($1::text[]) ORDER BY id`,
+    `SELECT id, name, type, url, auto_approve, config FROM sources WHERE type = ANY($1::text[]) ORDER BY id`,
     [types.filter((t) => ADAPTERS[t])]
   );
   if (rows.length === 0) console.log('No sources yet. Add one with: npm run add-source -- "Name" <url>');

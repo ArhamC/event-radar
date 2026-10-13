@@ -17,4 +17,11 @@ export interface RawEvent {
 // skip events they already have; cheap ones ignore it.
 export interface AdapterContext {
   known: Map<string, Date>; // external_id -> stored starts_at, for this source
+  config: SourceConfig;
+}
+
+// sources.config
+export interface SourceConfig {
+  venueName?: string; // default venue for events without their own location
+  address?: string;
 }
