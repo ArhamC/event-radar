@@ -68,6 +68,19 @@ London Public Library (reads the lpl.ca listing pages in date order, 2s apart, u
 npm run add-source -- "London Public Library" https://www.lpl.ca/whats-on --type=lpl --auto-approve
 ```
 
+Bars and venues (`--venue`/`--address` set the place for events that don't carry one):
+
+```bash
+# Any Squarespace events page (uses its ?format=json twin)
+npm run add-source -- "Honey Dip" https://www.honeydipbar.com/events --type=squarespace --venue="Honey Dip" --address="623 Dundas Street, London, ON" --auto-approve
+# Any Wix Events page (reads the event JSON embedded in the page)
+npm run add-source -- "Richmond Tavern" https://www.richmondtavern.ca/upcoming-events --type=wix-events --venue="Richmond Tavern" --address="372 Richmond Street, London, ON" --auto-approve
+# London Music Hall's listing (also covers Rum Runners)
+npm run add-source -- "London Music Hall & Rum Runners" https://londonmusichall.com/upcoming-events/ --type=london-music-hall --auto-approve
+# Venues that sell through Eventbrite, e.g. Toboggan Brewing
+npm run add-source -- "Toboggan Brewing" https://www.eventbrite.ca/o/toboggan-brewing-co-58536435703 --type=eventbrite --auto-approve
+```
+
 Run a single source type with `npm run pipeline -- --type=lpl` (comma-separate several).
 
 Imported events land in the review queue as `pending` (add `--auto-approve` to a trusted source to skip that).
