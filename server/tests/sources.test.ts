@@ -95,4 +95,19 @@ describe('Tourism London', () => {
     expect(e.description).toBe('London’s most haunted spots');
     expect(e.url).toBe('https://www.londontourism.ca/events/culture-walk');
   });
+  it('parses the real file shape: no UID, DTSTAMP, unescaped commas and semicolons', () => {
+    // Exactly how londontourism.ca serves it (node-ical silently dropped these)
+    const ics =
+      'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//hacksw/handcal//NONSGML v1.0//EN\r\nBEGIN:VEVENT\r\n' +
+      'DTSTAMP:20261012T233711\r\nDTSTART:20261015T180000\r\nDTEND:20261015T191500\r\n' +
+      'SUMMARY:Culture Walk: Haunted Histories - October 15\r\n' +
+      'LOCATION:Museum London, 421 Ridout Street North, London, Ontario, N6A 5H4\r\n' +
+      'DESCRIPTION:Dare to discover London&rsquo;s most haunted spots!\r\nEND:VEVENT\r\nEND:VCALENDAR ';
+    const e = parseEventIcs('culture-walk', ics, NOW)!;
+    expect(e.title).toBe('Culture Walk: Haunted Histories - October 15');
+    expect(e.startsAt.toISOString()).toBe('2026-10-15T22:00:00.000Z'); // 6pm London time
+    expect(e.endsAt?.toISOString()).toBe('2026-10-15T23:15:00.000Z');
+    expect(e.locationText).toBe('Museum London, 421 Ridout Street North, London, Ontario, N6A 5H4');
+    expect(e.description).toBe('Dare to discover London’s most haunted spots!');
+  });
 });

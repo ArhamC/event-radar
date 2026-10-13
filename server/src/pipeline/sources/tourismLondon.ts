@@ -1,4 +1,3 @@
-import * as ical from 'node-ical';
 import { config } from '../../config';
 import type { AdapterContext, RawEvent } from '../types';
 import { decodeEntities, sleep, toPlainText } from './html';
@@ -81,17 +80,45 @@ export function needsFetch(card: ListingCard, known: Map<string, Date>, now = ne
   return card.date >= today && card.date <= weekOut && card.date !== localDate(stored);
 }
 
+// Their .ics files are tiny and flat (one VEVENT, no UID, raw ";" in text), which node-ical silently
+// drops, so we read the few fields we need ourselves.
+export function readIcsFields(text: string): Record<string, string> {
+  const lines = text.replace(/\r?\n[ \t]/g, '').split(/\r?\n/); // unfold continuation lines
+  const fields: Record<string, string> = {};
+  let inEvent = false;
+  for (const line of lines) {
+    if (line.startsWith('BEGIN:VEVENT')) inEvent = true;
+    else if (line.startsWith('END:VEVENT')) break;
+    else if (inEvent) {
+      const m = /^([A-Z-]+)(?:;[^:]*)?:(.*)$/.exec(line);
+      if (m && !(m[1] in fields)) fields[m[1]] = m[2].replace(/\\([,;\\])/g, '$1').replace(/\\n/gi, '\n');
+    }
+  }
+  return fields;
+}
+
+// "20261015T180000" (floating = city time, the process TZ is pinned), "...Z" (UTC), or "20261015"
+export function icsDate(v: string | undefined): Date | undefined {
+  const m = v && /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(v.trim());
+  if (!m) return undefined;
+  const [y, mo, d, h = '0', mi = '0', sec = '0'] = m.slice(1, 7);
+  return m[7]
+    ? new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +sec))
+    : new Date(+y, +mo - 1, +d, +h, +mi, +sec);
+}
+
 export function parseEventIcs(slug: string, text: string, now = new Date()): RawEvent | null {
-  const item = Object.values(ical.sync.parseICS(text)).find((x: any) => x?.type === 'VEVENT') as any;
-  if (!item?.start || !item.summary) return null;
-  const startsAt: Date = item.start;
-  const endsAt: Date | undefined = item.end && item.end > startsAt ? item.end : undefined;
+  const f = readIcsFields(text);
+  const startsAt = icsDate(f.DTSTART);
+  if (!startsAt || !f.SUMMARY) return null;
+  const end = icsDate(f.DTEND);
+  const endsAt = end && end > startsAt ? end : undefined;
   if ((endsAt ?? startsAt) < now) return null;
-  const location = item.location ? decodeEntities(String(item.location)).trim() : undefined;
+  const location = f.LOCATION ? decodeEntities(f.LOCATION).trim() : undefined;
   return {
     externalId: slug, // their .ics has no UID; the slug is stable
-    title: decodeEntities(String(item.summary)).trim(),
-    description: toPlainText(item.description ? String(item.description) : undefined),
+    title: decodeEntities(f.SUMMARY).trim(),
+    description: toPlainText(f.DESCRIPTION),
     startsAt,
     endsAt,
     locationText: location && !/^various venues/i.test(location) ? location : undefined,
