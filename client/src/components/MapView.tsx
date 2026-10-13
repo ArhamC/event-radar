@@ -54,14 +54,30 @@ export default function MapView(p: Props) {
       style: {
         version: 8,
         sources: {
-          osm: {
+          base: {
             type: 'raster',
             tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
             tileSize: 256,
             attribution: '&copy; OpenStreetMap contributors',
           },
         },
-        layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+        layers: [
+          // Warm brown underlay; the tiles sit slightly transparent on it so the dark map reads amber, not blue-grey
+          { id: 'warm', type: 'background', paint: { 'background-color': '#3a2a1c' } },
+          {
+            id: 'base',
+            type: 'raster',
+            source: 'base',
+            // brightness-min > brightness-max inverts the light OSM tiles into a dark map
+            paint: {
+              'raster-saturation': -1,
+              'raster-brightness-min': 0.78,
+              'raster-brightness-max': 0.06,
+              'raster-contrast': 0.1,
+              'raster-opacity': 0.85,
+            },
+          },
+        ],
       },
       center: [p.center.lng, p.center.lat],
       zoom: 12,
@@ -70,12 +86,12 @@ export default function MapView(p: Props) {
 
     m.on('load', () => {
       m.addSource('radius', { type: 'geojson', data: circle(latest.current.center, latest.current.radiusM) });
-      m.addLayer({ id: 'radius-fill', type: 'fill', source: 'radius', paint: { 'fill-color': '#16213E', 'fill-opacity': 0.05 } });
+      m.addLayer({ id: 'radius-fill', type: 'fill', source: 'radius', paint: { 'fill-color': '#D9A066', 'fill-opacity': 0.05 } });
       m.addLayer({
         id: 'radius-line',
         type: 'line',
         source: 'radius',
-        paint: { 'line-color': '#16213E', 'line-width': 1.5, 'line-dasharray': [2, 2] },
+        paint: { 'line-color': '#D9A066', 'line-width': 1, 'line-opacity': 0.6, 'line-dasharray': [3, 3] },
       });
       ready.current = true;
     });
