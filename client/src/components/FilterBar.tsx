@@ -8,6 +8,8 @@ interface Props {
   onToggleVibe: (v: string) => void;
   free: boolean;
   onFree: (v: boolean) => void;
+  goodFor: 'solo' | 'group' | null;
+  onGoodFor: (v: 'solo' | 'group' | null) => void;
   q: string;
   onQ: (v: string) => void;
   savedOnly: boolean;
@@ -20,6 +22,13 @@ const RANGES = [
   ['today', 'Today'],
   ['week', 'Next 7 days'],
   ['month', 'Next 30 days'],
+] as const;
+
+// "Solo" also shows events marked good either way; same for "With others"
+const GOING = [
+  [null, 'Any'],
+  ['solo', 'Solo'],
+  ['group', 'With others'],
 ] as const;
 
 export default function FilterBar(p: Props) {
@@ -41,6 +50,20 @@ export default function FilterBar(p: Props) {
             className={`seg ${p.range === value ? 'on' : ''}`}
             aria-pressed={p.range === value}
             onClick={() => p.onRange(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="row going" role="group" aria-label="Going">
+        <span className="going-label">Going</span>
+        {GOING.map(([value, label]) => (
+          <button
+            key={label}
+            className={`seg ${p.goodFor === value ? 'on' : ''}`}
+            aria-pressed={p.goodFor === value}
+            onClick={() => p.onGoodFor(value)}
           >
             {label}
           </button>

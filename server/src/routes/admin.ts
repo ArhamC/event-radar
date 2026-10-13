@@ -12,7 +12,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const status = z.enum(['pending', 'approved', 'rejected', 'cancelled']).default('pending').parse(req.query.status ?? 'pending');
     const { rows } = await pool.query(
-      `SELECT e.id, e.title, e.description, e.starts_at, e.ends_at, e.price_cents, e.source_url, e.status,
+      `SELECT e.id, e.title, e.description, e.starts_at, e.ends_at, e.price_cents, e.source_url, e.status, e.good_for,
               v.name AS venue_name, v.address,
               ST_Y(v.location::geometry) AS lat, ST_X(v.location::geometry) AS lng,
               COALESCE(s.name, 'user submission') AS source,

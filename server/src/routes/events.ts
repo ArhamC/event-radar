@@ -14,12 +14,13 @@ const listQuery = z.object({
   to: z.coerce.date().optional(),
   tags: z.string().max(200).optional(), // comma-separated vibes, matches ANY
   free: z.enum(['true', 'false']).optional(),
+  goodFor: z.enum(['solo', 'group']).optional(), // 'both' events match either
   q: z.string().max(100).optional(),
 });
 
 // Shared SELECT list. Geography -> lat/lng via geometry cast.
 const EVENT_COLUMNS = `
-  e.id, e.title, e.description, e.starts_at, e.ends_at, e.price_cents, e.source_url,
+  e.id, e.title, e.description, e.starts_at, e.ends_at, e.price_cents, e.source_url, e.good_for,
   v.name AS venue_name, v.address,
   ST_Y(v.location::geometry) AS lat,
   ST_X(v.location::geometry) AS lng,
@@ -53,6 +54,10 @@ router.get(
         WHERE x.event_id = e.id AND tt.name = ANY($${params.length}::text[]))`);
     }
     if (q.free === 'true') where.push('e.price_cents = 0');
+    if (q.goodFor) {
+      params.push(q.goodFor);
+      where.push(`e.good_for IN ($${params.length}, 'both')`);
+    }
     if (q.q) {
       params.push(`%${q.q.replace(/[%_]/g, '')}%`);
       where.push(`(e.title ILIKE $${params.length} OR v.name ILIKE $${params.length})`);
@@ -110,6 +115,7 @@ const createBody = z
       lng: z.number().min(-180).max(180),
     }),
     tags: z.array(z.string().max(40)).max(6).default([]),
+    goodFor: z.enum(['solo', 'group', 'both']).default('both'),
   })
   .refine((b) => !b.endsAt || b.endsAt > b.startsAt, {
     message: 'End time must be after the start time',
@@ -138,9 +144,9 @@ router.post(
         [b.venue.name, b.venue.address ?? null, b.venue.lng, b.venue.lat]
       );
       const ev = await client.query(
-        `INSERT INTO events (title, description, starts_at, ends_at, venue_id, price_cents, source_url, status, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-        [b.title, b.description ?? null, b.startsAt, b.endsAt ?? null, venue.rows[0].id, b.priceCents, b.sourceUrl ?? null, status, req.user!.id]
+        `INSERT INTO events (title, description, starts_at, ends_at, venue_id, price_cents, source_url, status, created_by, good_for)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+        [b.title, b.description ?? null, b.startsAt, b.endsAt ?? null, venue.rows[0].id, b.priceCents, b.sourceUrl ?? null, status, req.user!.id, b.goodFor]
       );
       if (b.tags.length) {
         await client.query(

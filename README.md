@@ -44,9 +44,21 @@ npm run add-source -- "Public library events" https://example.org/events.ics
 npm run pipeline
 ```
 
+Besides plain iCal there are two London-specific source types:
+
+```bash
+# Western University's public calendar (JSON feed; only "General Public", in-person events)
+npm run add-source -- "Western University events" https://www.uwo.ca/events/_data/current-live.json --type=western --auto-approve
+# Tourism London: reads the listing pages, then each event's "Add to Calendar" .ics.
+# Honours their robots.txt Crawl-delay of 10s. The first run fetches everything (~25 minutes); after that it
+# only fetches new events and ones in the next 7 days whose listed date changed (usually 1-3 minutes).
+npm run add-source -- "Tourism London" https://www.londontourism.ca/events --type=tourism-london --auto-approve
+```
+
 Imported events land in the review queue as `pending` (add `--auto-approve` to a trusted source to skip that).
+Imported prices are unknown unless the source says otherwise, so the UI shows "see listing" instead of guessing "Free".
 Each run is logged in the `pipeline_runs` table (fetched / inserted / updated / skipped / duplicates / failed).
-To run it on a schedule, set `ENABLE_PIPELINE_CRON=true` in `server/.env`.
+To run it on a schedule, set `ENABLE_PIPELINE_CRON=true` in `server/.env` (default: daily at 3am London time, `PIPELINE_CRON`).
 
 What the pipeline does for each event: expands recurring events -> geocodes the address (OpenStreetMap Nominatim,
 limited to Canada and a box around London, cached, 1 request/sec, per their usage policy) -> finds or creates the venue -> checks for duplicates (same venue,

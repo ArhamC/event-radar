@@ -1,4 +1,4 @@
-import type { LatLng } from './types';
+import type { GoodFor, LatLng } from './types';
 
 // Events are shown in London, Ontario time even if the visitor's browser is in another zone.
 const timeZone = 'America/Toronto';
@@ -26,7 +26,8 @@ export function distanceLabel(m: number) {
   return m < 1000 ? `${Math.round(m / 10) * 10} m away` : `${(m / 1000).toFixed(1)} km away`;
 }
 
-export function priceLabel(cents: number) {
+export function priceLabel(cents: number | null) {
+  if (cents == null) return 'Price: see listing';
   return cents === 0 ? 'Free' : `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
 }
 
@@ -44,4 +45,8 @@ export function rangeToDates(range: 'today' | 'week' | 'month') {
   else if (range === 'week') to.setDate(to.getDate() + 7);
   else to.setDate(to.getDate() + 30);
   return { from, to };
+}
+
+export function goodForLabel(g: GoodFor) {
+  return g === 'solo' ? 'Good solo' : g === 'group' ? 'Better with a group' : 'Solo or group';
 }

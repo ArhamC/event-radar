@@ -22,6 +22,6 @@ export const config = {
     lng: Number(process.env.CENTER_LNG ?? -81.2453),
   },
   enablePipelineCron: process.env.ENABLE_PIPELINE_CRON === 'true',
-  pipelineCron: process.env.PIPELINE_CRON ?? '0 */6 * * *',
+  pipelineCron: process.env.PIPELINE_CRON ?? '0 3 * * *', // daily, 3am city time
   geocoderContact: process.env.GEOCODER_CONTACT ?? 'unset',
 };

@@ -25,26 +25,26 @@ const venues = [
   { name: 'Union Courtyard', dx: 1500, dy: -2300 },
 ];
 
-// [title, venueIndex, dayOffset, startHour, durationHours, priceCents, tags]
-const events: [string, number, number, number, number, number, string[]][] = [
-  ['Open Mic Night', 0, 0, 19, 3, 0, ['music', 'chill', 'creative']],
-  ['Saturday Farmers Market', 7, 2, 9, 5, 0, ['market', 'outdoors', 'family-friendly']],
-  ['Storytime for Little Ones', 2, 1, 10, 1, 0, ['family-friendly', 'learning']],
-  ['Zine Making Workshop', 6, 3, 18, 2, 1500, ['creative', 'learning']],
-  ['Vinyl Swap Meet', 4, 4, 12, 4, 0, ['music', 'market', 'social']],
-  ['Acoustic Sunday', 5, 5, 16, 3, 0, ['music', 'chill']],
-  ['Trivia Tuesday', 5, 1, 20, 2, 0, ['social', 'loud']],
-  ['Sunrise Yoga in the Park', 1, 2, 7, 1, 0, ['outdoors', 'chill']],
-  ['Punk Matinee', 3, 6, 15, 4, 1000, ['music', 'loud']],
-  ['Intro to Soldering', 6, 7, 18, 2, 2000, ['learning', 'creative']],
-  ['Board Game Night', 0, 2, 18, 4, 0, ['social', 'chill']],
-  ['Community Garden Day', 1, 8, 10, 3, 0, ['outdoors', 'social', 'family-friendly']],
-  ['Poetry Slam', 0, 9, 19, 2, 500, ['creative', 'chill']],
-  ['Night Market', 7, 10, 17, 5, 0, ['market', 'social', 'loud']],
-  ['Book Club: Short Stories', 2, 11, 18, 2, 0, ['learning', 'chill']],
-  ['Local Bands Showcase', 3, 12, 19, 4, 800, ['music', 'loud']],
-  ['Kids Art Afternoon', 3, 3, 14, 2, 0, ['family-friendly', 'creative']],
-  ['Run Club (5k, all paces)', 1, 4, 8, 1, 0, ['outdoors', 'social']],
+// [title, venueIndex, dayOffset, startHour, durationHours, priceCents, tags, goodFor]
+const events: [string, number, number, number, number, number, string[], 'solo' | 'group' | 'both'][] = [
+  ['Open Mic Night', 0, 0, 19, 3, 0, ['music', 'chill', 'creative'], 'both'],
+  ['Saturday Farmers Market', 7, 2, 9, 5, 0, ['market', 'outdoors', 'family-friendly'], 'both'],
+  ['Storytime for Little Ones', 2, 1, 10, 1, 0, ['family-friendly', 'learning'], 'group'],
+  ['Zine Making Workshop', 6, 3, 18, 2, 1500, ['creative', 'learning'], 'solo'],
+  ['Vinyl Swap Meet', 4, 4, 12, 4, 0, ['music', 'market', 'social'], 'solo'],
+  ['Acoustic Sunday', 5, 5, 16, 3, 0, ['music', 'chill'], 'both'],
+  ['Trivia Tuesday', 5, 1, 20, 2, 0, ['social', 'loud'], 'group'],
+  ['Sunrise Yoga in the Park', 1, 2, 7, 1, 0, ['outdoors', 'chill'], 'solo'],
+  ['Punk Matinee', 3, 6, 15, 4, 1000, ['music', 'loud'], 'both'],
+  ['Intro to Soldering', 6, 7, 18, 2, 2000, ['learning', 'creative'], 'solo'],
+  ['Board Game Night', 0, 2, 18, 4, 0, ['social', 'chill'], 'group'],
+  ['Community Garden Day', 1, 8, 10, 3, 0, ['outdoors', 'social', 'family-friendly'], 'both'],
+  ['Poetry Slam', 0, 9, 19, 2, 500, ['creative', 'chill'], 'both'],
+  ['Night Market', 7, 10, 17, 5, 0, ['market', 'social', 'loud'], 'group'],
+  ['Book Club: Short Stories', 2, 11, 18, 2, 0, ['learning', 'chill'], 'solo'],
+  ['Local Bands Showcase', 3, 12, 19, 4, 800, ['music', 'loud'], 'group'],
+  ['Kids Art Afternoon', 3, 3, 14, 2, 0, ['family-friendly', 'creative'], 'group'],
+  ['Run Club (5k, all paces)', 1, 4, 8, 1, 0, ['outdoors', 'social'], 'solo'],
 ];
 
 async function seed() {
@@ -79,16 +79,16 @@ async function seed() {
     }
 
     let i = 0;
-    for (const [title, vi, dayOffset, hour, dur, price, tags] of events) {
+    for (const [title, vi, dayOffset, hour, dur, price, tags, goodFor] of events) {
       const start = new Date();
       start.setDate(start.getDate() + dayOffset);
       start.setHours(hour, 0, 0, 0);
       const end = new Date(start.getTime() + dur * 3_600_000);
       const r = await client.query(
         `INSERT INTO events
-           (title, description, starts_at, ends_at, venue_id, price_cents, source_id, external_id, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'approved') RETURNING id`,
-        [title, 'Sample event. Replace with real listings.', start, end, venueIds[vi], price, sourceId, `sample-${i++}`]
+           (title, description, starts_at, ends_at, venue_id, price_cents, source_id, external_id, status, good_for)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'approved', $9) RETURNING id`,
+        [title, 'Sample event. Replace with real listings.', start, end, venueIds[vi], price, sourceId, `sample-${i++}`, goodFor]
       );
       await client.query(
         `INSERT INTO event_tags (event_id, tag_id)

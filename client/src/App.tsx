@@ -30,6 +30,7 @@ export default function App() {
   const [range, setRange] = useState<Range>('week');
   const [vibes, setVibes] = useState<string[]>([]);
   const [free, setFree] = useState(false);
+  const [goodFor, setGoodFor] = useState<'solo' | 'group' | null>(null);
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [savedOnly, setSavedOnly] = useState(false);
@@ -72,7 +73,7 @@ export default function App() {
     setError(null);
     const { from, to } = rangeToDates(range);
     api
-      .events({ lat: center.lat, lng: center.lng, radiusM: radiusKm * 1000, from, to, tags: vibes, free, q: debouncedQ }, ctl.signal)
+      .events({ lat: center.lat, lng: center.lng, radiusM: radiusKm * 1000, from, to, tags: vibes, free, q: debouncedQ, goodFor }, ctl.signal)
       .then((r) => {
         setEvents(r.events);
         setLoading(false);
@@ -83,7 +84,7 @@ export default function App() {
         setLoading(false);
       });
     return () => ctl.abort();
-  }, [center, radiusKm, range, vibes, free, debouncedQ, user?.id, reloadKey]);
+  }, [center, radiusKm, range, vibes, free, goodFor, debouncedQ, user?.id, reloadKey]);
 
   const visible = useMemo(() => (savedOnly ? events.filter((e) => e.is_favorite) : events), [events, savedOnly]);
   const selected = visible.find((e) => e.id === selectedId) ?? null;
@@ -154,6 +155,8 @@ export default function App() {
                 onToggleVibe={(v) => setVibes((vs) => (vs.includes(v) ? vs.filter((x) => x !== v) : [...vs, v]))}
                 free={free}
                 onFree={setFree}
+                goodFor={goodFor}
+                onGoodFor={setGoodFor}
                 q={q}
                 onQ={setQ}
                 savedOnly={savedOnly}

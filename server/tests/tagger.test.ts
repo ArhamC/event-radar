@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { suggestTags } from '../src/pipeline/tagger';
+import { suggestGoodFor, suggestTags } from '../src/pipeline/tagger';
 
 describe('suggestTags', () => {
   it('tags a farmers market in a park', () => {
@@ -12,5 +12,18 @@ describe('suggestTags', () => {
   });
   it('returns an empty list when nothing matches', () => {
     expect(suggestTags('Quarterly committee meeting')).toEqual([]);
+  });
+});
+
+describe('suggestGoodFor', () => {
+  it('marks drop-in classes as good to go solo', () => {
+    expect(suggestGoodFor('Drop-in pottery class')).toBe('solo');
+  });
+  it('marks team events as group', () => {
+    expect(suggestGoodFor('Trivia night', 'Teams of up to six')).toBe('group');
+  });
+  it('falls back to both when nothing or everything matches', () => {
+    expect(suggestGoodFor('Quarterly committee meeting')).toBe('both');
+    expect(suggestGoodFor('Beginners volleyball league')).toBe('both');
   });
 });

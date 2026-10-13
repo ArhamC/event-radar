@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import type { AdminEvent } from '../types';
-import { fullDate, timeRange } from '../utils';
+import { fullDate, goodForLabel, timeRange } from '../utils';
 
 export default function AdminQueue({ onChanged }: { onChanged: () => void }) {
   const [events, setEvents] = useState<AdminEvent[] | null>(null);
@@ -37,7 +37,7 @@ export default function AdminQueue({ onChanged }: { onChanged: () => void }) {
               {e.venue_name}
               {e.address ? `, ${e.address}` : ''}
               <br />
-              From: {e.source}
+              From: {e.source} · {goodForLabel(e.good_for)}
             </p>
             {e.description && <p>{e.description.slice(0, 240)}</p>}
             <div className="row">

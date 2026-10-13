@@ -1,0 +1,123 @@
+import * as ical from 'node-ical';
+import { config } from '../../config';
+import type { AdapterContext, RawEvent } from '../types';
+import { decodeEntities, sleep, toPlainText } from './html';
+
+// Tourism London (londontourism.ca/events). No feed, but every event page has an "Add to Calendar"
+// .ics at /icscal/?calendar=<slug> with exact times and a full street address. So: read the listing
+// pages for slugs, then fetch each event's .ics.
+// Politeness: their robots.txt allows crawling with Crawl-delay: 10, so one request every 10 seconds.
+// A full run is ~150 requests, roughly 25 minutes; fine for a background job.
+
+const BASE = 'https://www.londontourism.ca';
+const CRAWL_DELAY_MS = 10_000;
+const MAX_PAGES = 15;
+
+let lastRequestAt = 0;
+async function politeGet(url: string, retries = 2): Promise<string> {
+  const wait = CRAWL_DELAY_MS - (Date.now() - lastRequestAt);
+  if (wait > 0) await sleep(wait);
+  lastRequestAt = Date.now();
+  let res: Response;
+  try {
+    res = await fetch(url, { headers: { 'User-Agent': `EventRadar/1.0 (student project; ${config.geocoderContact})` } });
+  } catch (err) {
+    // Network blip (DNS, reset): back off and retry rather than lose a 25-minute crawl
+    if (retries === 0) throw err;
+    await sleep(30_000);
+    return politeGet(url, retries - 1);
+  }
+  if (!res.ok) throw new Error(`${url} responded ${res.status}`);
+  return res.text();
+}
+
+export interface ListingCard {
+  slug: string;
+  date: string | null; // start date shown on the card, YYYY-MM-DD
+}
+
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+
+// "Thursday, October 15, 2026" | "October 15 - 25, 2026" | "October 30 - November 2, 2026" -> start date
+export function parseCardDate(text: string): string | null {
+  const m = /([A-Z][a-z]+) (\d{1,2})\b[^,]*?, (\d{4})/.exec(text);
+  const month = m ? MONTHS.indexOf(m[1].toLowerCase()) : -1;
+  if (!m || month < 0) return null;
+  return `${m[3]}-${String(month + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+}
+
+// Event cards are links that contain a date "chicklet" (category links don't), followed by a <time>.
+export function parseListing(html: string): ListingCard[] {
+  const re =
+    /<a href="https:\/\/www\.londontourism\.ca\/events\/([a-z0-9-]+)">\s*<span class="dateChicklet"[\s\S]*?<time><strong>([^<]*)<\/strong><\/time>/g;
+  const cards = new Map<string, ListingCard>();
+  for (const m of html.matchAll(re)) if (!cards.has(m[1])) cards.set(m[1], { slug: m[1], date: parseCardDate(m[2]) });
+  return [...cards.values()];
+}
+
+async function crawlListing(path: string): Promise<ListingCard[]> {
+  const cards = new Map<string, ListingCard>();
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const html = await politeGet(page === 1 ? `${BASE}${path}` : `${BASE}${path}/page/${page}`);
+    const found = parseListing(html).filter((c) => !cards.has(c.slug));
+    if (found.length === 0) break; // past the last page
+    found.forEach((c) => cards.set(c.slug, c));
+    if (!html.includes(`${path}/page/${page + 1}`)) break;
+  }
+  return [...cards.values()];
+}
+
+// YYYY-MM-DD in city time (the process TZ is pinned to the city, see config.ts)
+const localDate = (d: Date) => d.toLocaleDateString('en-CA');
+
+// The .ics fetch is the slow part (10s each), so only do it for events we don't have yet, plus
+// events in the next 7 days whose date on the listing no longer matches what we stored.
+export function needsFetch(card: ListingCard, known: Map<string, Date>, now = new Date()): boolean {
+  const stored = known.get(card.slug);
+  if (!stored) return true;
+  if (!card.date) return false;
+  const today = localDate(now);
+  const weekOut = localDate(new Date(now.getTime() + 7 * 86_400_000));
+  return card.date >= today && card.date <= weekOut && card.date !== localDate(stored);
+}
+
+export function parseEventIcs(slug: string, text: string, now = new Date()): RawEvent | null {
+  const item = Object.values(ical.sync.parseICS(text)).find((x: any) => x?.type === 'VEVENT') as any;
+  if (!item?.start || !item.summary) return null;
+  const startsAt: Date = item.start;
+  const endsAt: Date | undefined = item.end && item.end > startsAt ? item.end : undefined;
+  if ((endsAt ?? startsAt) < now) return null;
+  const location = item.location ? decodeEntities(String(item.location)).trim() : undefined;
+  return {
+    externalId: slug, // their .ics has no UID; the slug is stable
+    title: decodeEntities(String(item.summary)).trim(),
+    description: toPlainText(item.description ? String(item.description) : undefined),
+    startsAt,
+    endsAt,
+    locationText: location && !/^various venues/i.test(location) ? location : undefined,
+    url: `${BASE}/events/${slug}`,
+  };
+}
+
+export async function fetchTourismLondon(_url: string, ctx: AdapterContext, horizonDays = 60): Promise<RawEvent[]> {
+  const cards = await crawlListing('/events/all-events');
+  const slugs = cards.filter((c) => needsFetch(c, ctx.known)).map((c) => c.slug);
+  console.log(`[tourism-london] ${cards.length} on the listing, fetching ${slugs.length} (new or date changed)`);
+  if (slugs.length === 0) return [];
+
+  // Their "Free & By Donation" category is the only price signal; everything else stays unknown
+  const freeCards = await crawlListing('/events/free-and-by-donation-events').catch(() => [] as ListingCard[]);
+  const free = new Set(freeCards.map((c) => c.slug));
+
+  const horizon = new Date(Date.now() + horizonDays * 86_400_000);
+  const out: RawEvent[] = [];
+  for (const slug of slugs) {
+    try {
+      const ev = parseEventIcs(slug, await politeGet(`${BASE}/icscal/?calendar=${slug}`));
+      if (ev && ev.startsAt <= horizon) out.push({ ...ev, priceCents: free.has(slug) ? 0 : null });
+    } catch (err) {
+      console.error(`[tourism-london] ${slug}:`, (err as Error).message);
+    }
+  }
+  return out;
+}

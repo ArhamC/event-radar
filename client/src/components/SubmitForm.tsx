@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { api } from '../api/client';
-import type { LatLng } from '../types';
+import type { GoodFor, LatLng } from '../types';
+import { goodForLabel } from '../utils';
 
 interface Props {
   allVibes: string[];
@@ -19,6 +20,7 @@ export default function SubmitForm({ allVibes, picked, isAdmin, onDone }: Props)
   const [free, setFree] = useState(true);
   const [price, setPrice] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [goodFor, setGoodFor] = useState<GoodFor>('both');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export default function SubmitForm({ allVibes, picked, isAdmin, onDone }: Props)
         priceCents,
         venue: { name: venueName, address: address || undefined, lat: picked.lat, lng: picked.lng },
         tags,
+        goodFor,
       });
       setResult(r.status === 'approved' ? 'Published. It is live on the map now.' : 'Submitted. It will appear once a moderator approves it.');
     } catch (err) {
@@ -112,6 +115,21 @@ export default function SubmitForm({ allVibes, picked, isAdmin, onDone }: Props)
             <input type="number" min="0" step="0.5" value={price} onChange={(e) => setPrice(e.target.value)} />
           </label>
         )}
+      </div>
+
+      <div className="row going" role="group" aria-label="Good for">
+        <span className="going-label">Good for</span>
+        {(['solo', 'group', 'both'] as const).map((g) => (
+          <button
+            type="button"
+            key={g}
+            className={`seg ${goodFor === g ? 'on' : ''}`}
+            aria-pressed={goodFor === g}
+            onClick={() => setGoodFor(g)}
+          >
+            {goodForLabel(g)}
+          </button>
+        ))}
       </div>
 
       <div className="chips" role="group" aria-label="Vibe">

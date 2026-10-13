@@ -1,5 +1,5 @@
 import type { EventItem } from '../types';
-import { dayParts, distanceLabel, priceLabel, timeRange } from '../utils';
+import { dayParts, distanceLabel, goodForLabel, priceLabel, timeRange } from '../utils';
 
 interface Props {
   event: EventItem;
@@ -27,6 +27,7 @@ export default function EventCard({ event: e, selected, onSelect, onFavorite }: 
           </span>
           <span className="card-tags">
             <span className={`price ${e.price_cents === 0 ? 'free' : ''}`}>{priceLabel(e.price_cents)}</span>
+            <span className="tag mode">{goodForLabel(e.good_for)}</span>
             {e.tags.map((t) => (
               <span key={t} className="tag">
                 {t}

@@ -24,3 +24,18 @@ export function suggestTags(title: string, description = ''): string[] {
   const text = `${title} ${description}`;
   return COMPILED.filter(({ re }) => re.test(text)).map(({ tag }) => tag);
 }
+
+// Who an event suits. Conservative: anything unclear (no match, or both match) stays 'both'.
+const wordRe = (words: string[]) => new RegExp(`(^|\\W)(${words.map(escape).join('|')})(\\W|$)`, 'i');
+const SOLO = wordRe(['drop-in', 'drop in', 'newcomers', 'all welcome', 'beginners', 'class', 'workshop', 'run club', 'yoga', 'book club', 'exhibit', 'exhibition', 'gallery']);
+const GROUP = wordRe(['trivia', 'team', 'teams', 'tournament', 'league', 'bring a friend', 'bring friends', 'pairs', 'partner', 'party']);
+
+export type GoodFor = 'solo' | 'group' | 'both';
+
+export function suggestGoodFor(title: string, description = ''): GoodFor {
+  const text = `${title} ${description}`;
+  const solo = SOLO.test(text);
+  const group = GROUP.test(text);
+  if (solo === group) return 'both';
+  return solo ? 'solo' : 'group';
+}

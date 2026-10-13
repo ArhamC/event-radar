@@ -1,4 +1,4 @@
-import type { AdminEvent, EventItem, User } from '../types';
+import type { AdminEvent, EventItem, GoodFor, User } from '../types';
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
@@ -31,6 +31,7 @@ export interface EventQuery {
   tags: string[];
   free: boolean;
   q: string;
+  goodFor: 'solo' | 'group' | null;
 }
 
 export interface NewEvent {
@@ -41,6 +42,7 @@ export interface NewEvent {
   priceCents: number;
   venue: { name: string; address?: string; lat: number; lng: number };
   tags: string[];
+  goodFor: GoodFor;
 }
 
 export const api = {
@@ -64,6 +66,7 @@ export const api = {
     if (p.tags.length) qs.set('tags', p.tags.join(','));
     if (p.free) qs.set('free', 'true');
     if (p.q) qs.set('q', p.q);
+    if (p.goodFor) qs.set('goodFor', p.goodFor);
     return request<{ events: EventItem[] }>(`/events?${qs}`, { signal });
   },
   createEvent: (e: NewEvent) =>

@@ -189,3 +189,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* A faint lamp glow at the top of the list */
 .panel { background: radial-gradient(120% 40% at 0% 0%, rgba(217, 160, 102, 0.06), transparent 70%), var(--paper); }
 .filters { background: transparent; }
+
+/* Solo / group */
+.going { align-items: center; gap: 4px 6px; }
+.going-label { color: var(--slate); font-size: 14px; margin-right: 6px; }
+.tag.mode { color: var(--ink); }

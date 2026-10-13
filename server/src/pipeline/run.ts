@@ -1,9 +1,11 @@
 import { pool } from '../db/pool';
 import { fetchIcal } from './sources/ical';
+import { fetchWestern } from './sources/western';
+import { fetchTourismLondon } from './sources/tourismLondon';
 import { geocode } from './geocode';
 import { isLikelyDuplicate } from './dedupe';
-import { suggestTags } from './tagger';
-import type { RawEvent } from './types';
+import { suggestGoodFor, suggestTags } from './tagger';
+import type { AdapterContext, RawEvent } from './types';
 
 interface Source {
   id: number;
@@ -12,6 +14,13 @@ interface Source {
   url: string;
   auto_approve: boolean;
 }
+
+// sources.type -> adapter. Each returns upcoming RawEvents; everything after that is shared.
+export const ADAPTERS: Record<string, (url: string, ctx: AdapterContext) => Promise<RawEvent[]>> = {
+  ical: (url) => fetchIcal(url),
+  western: (url) => fetchWestern(url),
+  'tourism-london': fetchTourismLondon,
+};
 
 interface Counters {
   fetched: number;
@@ -58,19 +67,19 @@ async function isDuplicate(raw: RawEvent, venueId: number, sourceId: number): Pr
 }
 
 async function ingestOne(source: Source, raw: RawEvent, c: Counters) {
-  if (!raw.locationText) {
+  if (!raw.locationText && !raw.point) {
     c.skipped++; // no location, can't put it on a map
     return;
   }
-  const point = await geocode(raw.locationText);
+  const point = raw.point ?? (raw.locationText ? await geocode(raw.locationText) : null) ?? raw.fallbackPoint;
   if (!point) {
     c.skipped++;
     return;
   }
 
-  // Venue name = first part of "Venue Name, 123 Street, City"
-  const venueName = raw.locationText.split(',')[0].trim().slice(0, 120);
-  const venueId = await findOrCreateVenue(venueName, raw.locationText, point.lat, point.lng);
+  // Venue name = first part of "Venue Name, 123 Street, City" unless the adapter knows better
+  const venueName = (raw.venueName ?? raw.locationText!.split(',')[0]).trim().slice(0, 120);
+  const venueId = await findOrCreateVenue(venueName, raw.locationText ?? venueName, point.lat, point.lng);
 
   if (await isDuplicate(raw, venueId, source.id)) {
     c.duplicates++;
@@ -82,10 +91,11 @@ async function ingestOne(source: Source, raw: RawEvent, c: Counters) {
   // so an admin's approve/reject decision sticks.
   const res = await pool.query(
     `INSERT INTO events
-       (title, description, starts_at, ends_at, venue_id, source_id, external_id, source_url, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       (title, description, starts_at, ends_at, venue_id, source_id, external_id, source_url, status, good_for, price_cents)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      ON CONFLICT (source_id, external_id) DO UPDATE SET
        title = EXCLUDED.title,
+       price_cents = EXCLUDED.price_cents,
        description = EXCLUDED.description,
        starts_at = EXCLUDED.starts_at,
        ends_at = EXCLUDED.ends_at,
@@ -103,6 +113,8 @@ async function ingestOne(source: Source, raw: RawEvent, c: Counters) {
       raw.externalId,
       raw.url ?? null,
       source.auto_approve ? 'approved' : 'pending',
+      suggestGoodFor(raw.title, raw.description), // set on insert only; not in the UPDATE list
+      raw.priceCents ?? null, // null = unknown, never assume free
     ]
   );
 
@@ -129,8 +141,12 @@ async function runSource(source: Source) {
   let error: string | null = null;
 
   try {
-    if (source.type !== 'ical') throw new Error(`Unsupported source type: ${source.type}`);
-    const events = await fetchIcal(source.url);
+    const adapter = ADAPTERS[source.type];
+    if (!adapter) throw new Error(`Unsupported source type: ${source.type}`);
+    // What we already have from this source, so slow adapters can skip unchanged events
+    const existing = await pool.query('SELECT external_id, starts_at FROM events WHERE source_id = $1', [source.id]);
+    const known = new Map<string, Date>(existing.rows.map((r) => [r.external_id, new Date(r.starts_at)]));
+    const events = await adapter(source.url, { known });
     c.fetched = events.length;
     for (const raw of events) {
       try {
@@ -157,8 +173,11 @@ async function runSource(source: Source) {
 }
 
 export async function runPipeline() {
-  const { rows } = await pool.query<Source>(`SELECT id, name, type, url, auto_approve FROM sources WHERE type = 'ical'`);
-  if (rows.length === 0) console.log('No iCal sources yet. Add one with: npm run add-source -- "Name" <url>');
+  const { rows } = await pool.query<Source>(
+    `SELECT id, name, type, url, auto_approve FROM sources WHERE type = ANY($1::text[]) ORDER BY id`,
+    [Object.keys(ADAPTERS)]
+  );
+  if (rows.length === 0) console.log('No sources yet. Add one with: npm run add-source -- "Name" <url>');
   for (const source of rows) await runSource(source); // sequential: keeps geocoding polite
 }
 
