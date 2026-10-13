@@ -29,7 +29,7 @@ const venues = [
 const events: [string, number, number, number, number, number, string[], 'solo' | 'group' | 'both'][] = [
   ['Open Mic Night', 0, 0, 19, 3, 0, ['music', 'chill', 'creative'], 'both'],
   ['Saturday Farmers Market', 7, 2, 9, 5, 0, ['market', 'outdoors', 'family-friendly'], 'both'],
-  ['Storytime for Little Ones', 2, 1, 10, 1, 0, ['family-friendly', 'learning'], 'group'],
+  ['Silent Reading Hour', 2, 1, 10, 1, 0, ['chill', 'learning'], 'solo'],
   ['Zine Making Workshop', 6, 3, 18, 2, 1500, ['creative', 'learning'], 'solo'],
   ['Vinyl Swap Meet', 4, 4, 12, 4, 0, ['music', 'market', 'social'], 'solo'],
   ['Acoustic Sunday', 5, 5, 16, 3, 0, ['music', 'chill'], 'both'],

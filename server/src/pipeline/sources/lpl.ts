@@ -30,7 +30,6 @@ const BRANCHES: Record<string, string> = {
   'Pond Mills Library': '1166 Commissioners Road East, London, Ontario',
   'Stoney Creek Library': '920 Sunningdale Road East, London, Ontario',
   'The Wolf Performance Hall': '251 Dundas St, London, Ontario', // inside Central Library
-  "Children's Library": '251 Dundas St, London, Ontario', // Central Library's children's floor
 };
 
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];

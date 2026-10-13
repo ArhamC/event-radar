@@ -7,6 +7,7 @@ import { fetchLpl } from './sources/lpl';
 import { geocode } from './geocode';
 import { isLikelyDuplicate } from './dedupe';
 import { suggestGoodFor, suggestTags } from './tagger';
+import { isChildrensReading } from './filters';
 import type { AdapterContext, RawEvent } from './types';
 
 interface Source {
@@ -73,6 +74,10 @@ async function isDuplicate(raw: RawEvent, venueId: number, sourceId: number): Pr
 async function ingestOne(source: Source, raw: RawEvent, c: Counters) {
   if (!raw.locationText && !raw.point) {
     c.skipped++; // no location, can't put it on a map
+    return;
+  }
+  if (isChildrensReading(raw.title, raw.venueName ?? raw.locationText)) {
+    c.skipped++; // out of scope for Side Street (see filters.ts)
     return;
   }
   const point = raw.point ?? (raw.locationText ? await geocode(raw.locationText) : null) ?? raw.fallbackPoint;
