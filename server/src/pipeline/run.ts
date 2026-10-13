@@ -7,7 +7,7 @@ import { fetchLpl } from './sources/lpl';
 import { geocode } from './geocode';
 import { isLikelyDuplicate } from './dedupe';
 import { suggestGoodFor, suggestTags } from './tagger';
-import { isChildrensReading } from './filters';
+import { isForKids } from './filters';
 import type { AdapterContext, RawEvent } from './types';
 
 interface Source {
@@ -76,7 +76,7 @@ async function ingestOne(source: Source, raw: RawEvent, c: Counters) {
     c.skipped++; // no location, can't put it on a map
     return;
   }
-  if (isChildrensReading(raw.title, raw.venueName ?? raw.locationText)) {
+  if (isForKids(raw.title, raw.venueName ?? raw.locationText)) {
     c.skipped++; // out of scope for Side Street (see filters.ts)
     return;
   }

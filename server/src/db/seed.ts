@@ -43,7 +43,7 @@ const events: [string, number, number, number, number, number, string[], 'solo' 
   ['Night Market', 7, 10, 17, 5, 0, ['market', 'social', 'loud'], 'group'],
   ['Book Club: Short Stories', 2, 11, 18, 2, 0, ['learning', 'chill'], 'solo'],
   ['Local Bands Showcase', 3, 12, 19, 4, 800, ['music', 'loud'], 'group'],
-  ['Kids Art Afternoon', 3, 3, 14, 2, 0, ['family-friendly', 'creative'], 'group'],
+  ['Life Drawing Session', 3, 3, 14, 2, 1000, ['creative', 'chill'], 'solo'],
   ['Run Club (5k, all paces)', 1, 4, 8, 1, 0, ['outdoors', 'social'], 'solo'],
 ];
 
