@@ -52,6 +52,9 @@ describe('isForKids', () => {
     'Author Reading: Casey Lyall',
     'Book Club: Short Stories',
     'Saturday Farmers Market',
+    // bar listings that merely contain a kid word
+    'Rezistico, Incognito Baby, David Tosh, Dawn Treader & Jacob Roma',
+    'CONCERT FOR THE KIDS',
   ])('keeps "%s"', (title) => {
     expect(isForKids(title)).toBe(false);
   });
